@@ -23,6 +23,8 @@ class App extends Component<AppProps, AppState> {
   }
 
   async getSensorData() {
+    const mock = false;
+    if (mock){
       const readings : Record[] = [
         { RecordedOn: new Date(2023, 4,1,12,0,0), Temperature: 10.8, Temperature2: 11.8 },
         { RecordedOn: new Date(2023, 4,1,13,0,0), Temperature: 11.8, Temperature2: 11.7 },
@@ -31,14 +33,16 @@ class App extends Component<AppProps, AppState> {
         { RecordedOn: new Date(2023, 4,1,16,0,0), Temperature: 10.8, Temperature2: 11.8 },
       ];
       this.setState({ isSensorDataLoaded: true, temperatureReadings: readings }); 
-
-    // const sensorData = await axios.get<{ RecordedOn: string, Temperature: number, Temperature2: number }[]>("/api/temperature");
-    // if (sensorData.status === 200) {
-    //   const timeFormatter = d3.utcParse("%Y-%m-%dT%H:%M:%S.%L%Z");
-    //   const readings = sensorData.data.map(d => { return { RecordedOn: timeFormatter(d.RecordedOn) || new Date(), Temperature: d.Temperature, Temperature2: d.Temperature2 }; })
-    //   this.setState({ isSensorDataLoaded: true, temperatureReadings: readings }); 
-    // }
-
+    }
+    else
+    {
+      const sensorData = await axios.get<{ RecordedOn: string, Temperature: number, Temperature2: number }[]>("/api/temperature");
+      if (sensorData.status === 200) {
+        const timeFormatter = d3.utcParse("%Y-%m-%dT%H:%M:%S.%L%Z");
+        const readings = sensorData.data.map(d => { return { RecordedOn: timeFormatter(d.RecordedOn) || new Date(), Temperature: d.Temperature, Temperature2: d.Temperature2 }; })
+        this.setState({ isSensorDataLoaded: true, temperatureReadings: readings }); 
+      }
+    }
   }
 
   render() {
