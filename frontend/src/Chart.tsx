@@ -128,7 +128,7 @@ class Chart extends Component<ChartProps, ChartState> {
       // work out which date value is closest to the mouse
       var dx = invertedx.getTime() - d0.RecordedOn.getTime() > d1.RecordedOn.getTime() - invertedx.getTime() ? d1 : d0;
       var cx = x(dx.RecordedOn) as number;
-      var cy = y(dx.Temperature) as number;
+      var cy = y(dx.Temperature2) as number;
 
       focus.style('display', null);
       focus.select('#focusCircle')
@@ -137,7 +137,7 @@ class Chart extends Component<ChartProps, ChartState> {
       focus.select('#focusTextDeg')
         .attr('x', cx)
         .attr('y', cy - 15)
-        .html(`${dx.Temperature}&deg;C`);
+        .html(`${dx.Temperature2}&deg;C`);
       focus.select('#focusTextTime')
         .attr('x', cx)
         .attr('y', cy - 7)
@@ -166,7 +166,7 @@ class Chart extends Component<ChartProps, ChartState> {
     var areaGenerator = d3.area<any>()
       .x(function (d) { return x(d.RecordedOn) as number })
       .y0(y(0) as number)
-      .y1(function (d) { return y(d.Temperature) as number }).curve(d3.curveBasis)
+      .y1(function (d) { return y(d.Temperature2) as number }).curve(d3.curveBasis)
 
 
     // Add the area
