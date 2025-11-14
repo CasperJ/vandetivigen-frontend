@@ -1,14 +1,17 @@
-import { Waves, Wind, Droplets, TrendingUp, TrendingDown, Minus, AlertTriangle } from 'lucide-react';
+import { Waves, Wind, Droplets, TrendingUp, TrendingDown, Minus, AlertTriangle, MousePointer2, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import WaterTempChart from './components/WaterTempChart';
 import { fetchWeatherData, type WeatherData } from './services/weatherService';
+import { fetchAtmosphericConditions, type WindConditions, type UvConditions } from './services/realtimeWeatherService';
 
 function App() {
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [wind, setWind] = useState<WindConditions | null>(null);
+  const [uv, setUv] = useState<UvConditions | null>(null);
+  const [atmosphericError, setAtmosphericError] = useState<string | null>(null);
 
 
-  const enableWind = false;
   const enableAir = false;
   const enableWaterQuality = false;
 
@@ -16,6 +19,33 @@ function App() {
     loadData();
     const interval = setInterval(loadData, 600000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadAtmospheric() {
+      try {
+        const realtime = await fetchAtmosphericConditions();
+        if (!isMounted) return;
+        setWind(realtime.wind);
+        setUv(realtime.uv);
+        setAtmosphericError(null);
+      } catch (error) {
+        console.error('Failed to load atmospheric conditions', error);
+        if (!isMounted) return;
+        setWind(null);
+        setUv(null);
+        setAtmosphericError('Unable to load live atmospheric data');
+      }
+    }
+
+    loadAtmospheric();
+    const interval = setInterval(loadAtmospheric, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   async function loadData() {
@@ -56,6 +86,44 @@ function App() {
     const index = Math.round(degrees / 45) % 8;
     return directions[index];
   };
+
+  const getUvLevelStyles = (level: UvConditions['level'] | 'safe') => {
+    const mapping = {
+      safe: {
+        background: 'from-emerald-50 to-green-50',
+        border: 'border-emerald-200',
+        text: 'text-emerald-900',
+        badge: 'bg-emerald-100 text-emerald-800',
+        iconBg: 'bg-emerald-100 text-emerald-700',
+        label: 'Low (0-2)',
+      },
+      aware: {
+        background: 'from-amber-50 to-yellow-50',
+        border: 'border-amber-200',
+        text: 'text-amber-900',
+        badge: 'bg-amber-100 text-amber-800',
+        iconBg: 'bg-amber-100 text-amber-700',
+        label: 'Moderate / High (3-7)',
+      },
+      extreme: {
+        background: 'from-rose-50 to-red-50',
+        border: 'border-rose-200',
+        text: 'text-rose-900',
+        badge: 'bg-rose-100 text-rose-800',
+        iconBg: 'bg-rose-100 text-rose-700',
+        label: 'Very High (8+)',
+      },
+    } as const;
+
+    return mapping[level] ?? mapping.safe;
+  };
+
+  const windDirectionDegrees = wind?.bearingDegrees ?? data.current.windDirection;
+  const windDirectionText = wind?.direction ?? getWindDirection(data.current.windDirection);
+  const windSpeedDisplay = wind ? `${wind.speedMs.toFixed(1)} m/s` : '—';
+  const windGustDisplay = wind && wind.gustMs !== null ? `${wind.gustMs.toFixed(1)} m/s` : '—';
+  const uvIndexDisplay = uv ? uv.index.toFixed(1) : '—';
+  const uvStyles = getUvLevelStyles(uv?.level ?? 'safe');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-200 via-blue-200 to-cyan-300">
@@ -162,8 +230,6 @@ function App() {
               </div>
             </div>
           }
-          {enableWind &&
-
             <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
                 <Wind className="w-6 h-6 text-blue-600" />
@@ -174,27 +240,68 @@ function App() {
                 <div className="relative w-32 h-32">
                   <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-cyan-100 rounded-full border-4 border-blue-300"></div>
                   <div
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ transform: `rotate(${data.current.windDirection}deg)` }}
+                    className="absolute inset-0 flex items-center justify-center transition-transform duration-500 ease-out"
+                    style={{ transform: `rotate(${windDirectionDegrees + 45}deg)` }}
                   >
-                    <div className="text-4xl">↑</div>
+                    <MousePointer2 className="w-16 h-16 text-blue-300" strokeWidth={2.5} />
                   </div>
                 </div>
 
-                <div>
-                  <div className="text-gray-600 text-sm font-medium mb-1">Direction</div>
-                  <div className="text-3xl font-bold text-gray-800 mb-4">{getWindDirection(data.current.windDirection)}</div>
+                <div className="flex-1 space-y-6">
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <div className="text-gray-600 text-sm font-medium mb-1">Direction</div>
+                      <div className="text-3xl font-bold text-gray-800">{windDirectionText}</div>
+                    </div>
+                    {wind && (
+                      <div className="text-right">
+                        <div className="text-gray-600 text-sm font-medium mb-1">Bearing</div>
+                        <div className="text-xl font-semibold text-gray-800">{windDirectionDegrees.toFixed(0)}°</div>
+                      </div>
+                    )}
+                  </div>
 
-                  <div className="text-gray-600 text-sm font-medium mb-1">Speed</div>
-                  <div className="text-3xl font-bold text-gray-800">{data.current.windSpeed} km/h</div>
+                  <div className="flex items-end justify-between gap-4">
+                    <div>
+                      <div className="text-gray-600 text-sm font-medium mb-1">Speed</div>
+                      <div className="text-3xl font-bold text-gray-800">{windSpeedDisplay}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-gray-600 text-sm font-medium mb-1">Gust</div>
+                      <div className="text-2xl font-semibold text-gray-800">{windGustDisplay}</div>
+                    </div>
+                  </div>
+                  {atmosphericError && <div className="text-sm text-red-500">{atmosphericError}</div>}
                 </div>
               </div>
             </div>
-          }
+            <div className="bg-white/95 backdrop-blur rounded-3xl shadow-2xl p-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <Sun className="w-6 h-6 text-amber-500" />
+                UV Index
+              </h2>
+
+              <div className={`rounded-3xl border ${uvStyles.border} bg-gradient-to-br ${uvStyles.background} p-6 flex flex-col gap-6`}>
+                <div className="flex items-center gap-4">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${uvStyles.iconBg}`}>
+                    <Sun className="w-10 h-10" />
+                  </div>
+                  <div>
+                    <div className={`text-sm font-semibold uppercase tracking-wide ${uvStyles.badge} inline-flex px-3 py-1 rounded-full`}>
+                      {uvStyles.label}
+                    </div>
+                    <div className="text-5xl font-bold text-gray-900 mt-3">{uvIndexDisplay}</div>
+                  </div>
+                </div>
+                {atmosphericError && (
+                  <div className="text-sm text-red-500">{atmosphericError}</div>
+                )}
+              </div>
+            </div>
         </div>
 
         <footer className="mt-8 text-center text-gray-700 text-sm">
-          <p>Data updated every 60 minutes • Last update: {new Date(data.current.timestamp).toLocaleTimeString()}</p>
+          <p>Water temperature updated every 60 minutes, Wind, UV, etc is realtime • Last update: {new Date(data.current.timestamp).toLocaleTimeString()}</p>
         </footer>
       </div>
     </div>
