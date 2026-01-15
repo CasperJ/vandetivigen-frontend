@@ -2,13 +2,14 @@ import { Waves, Wind, Droplets, TrendingUp, TrendingDown, Minus, AlertTriangle, 
 import { useEffect, useState } from 'react';
 import WaterTempChart from './components/WaterTempChart';
 import { fetchWeatherData, type WeatherData } from './services/weatherService';
-import { fetchAtmosphericConditions, type WindConditions, type UvConditions } from './services/realtimeWeatherService';
+import { fetchAtmosphericConditions, type WindConditions, type UvConditions, type AirConditions } from './services/realtimeWeatherService';
 
 function App() {
   const [data, setData] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState(true);
   const [wind, setWind] = useState<WindConditions | null>(null);
   const [uv, setUv] = useState<UvConditions | null>(null);
+  const [air, setAir] = useState<AirConditions | null>(null);
   const [atmosphericError, setAtmosphericError] = useState<string | null>(null);
 
 
@@ -30,12 +31,14 @@ function App() {
         if (!isMounted) return;
         setWind(realtime.wind);
         setUv(realtime.uv);
+        setAir(realtime.air);
         setAtmosphericError(null);
       } catch (error) {
         console.error('Failed to load atmospheric conditions', error);
         if (!isMounted) return;
         setWind(null);
         setUv(null);
+        setAir(null);
         setAtmosphericError('Unable to load live atmospheric data');
       }
     }
@@ -217,8 +220,8 @@ function App() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-200">
                   <div className="text-orange-700 text-sm font-medium mb-2">Temperature</div>
-                  <div className="text-4xl font-bold text-gray-800">{data.current.airTemp}°C</div>
-                  <div className="text-sm font-bold text-gray-800">(Feels like: {data.current.airTemp}°C)</div>
+                  <div className="text-4xl font-bold text-gray-800">{air?.temp}°C</div>
+                  <div className="text-sm font-bold text-gray-800">(Feels like: {air?.temp_feels_like}°C)</div>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">
@@ -226,7 +229,7 @@ function App() {
                     <Droplets className="w-4 h-4" />
                     <span>Humidity</span>
                   </div>
-                  <div className="text-4xl font-bold text-gray-800">{data.current.humidity}%</div>
+                  <div className="text-4xl font-bold text-gray-800">{air?.humidity}%</div>
                 </div>
               </div>
             </div>
