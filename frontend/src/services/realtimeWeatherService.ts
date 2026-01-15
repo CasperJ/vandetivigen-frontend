@@ -2,14 +2,12 @@ const REAL_TIME_ENDPOINT = 'https://realtime.vandetivigen.dk/api/real-time';
 const KMH_TO_MS = 1000 / 3600;
 
 export const SENSOR_IDS = {
-  BEAUFORT_SCALE: 'sensor.tempest_st_00023723_beaufort_scale',
-  SEA_LEVEL_PRESSURE: 'sensor.tempest_st_00023723_sea_level_pressure',
-  STATION_PRESSURE: 'sensor.tempest_st_00023723_station_pressure',
-  UV_INDEX: 'sensor.tempest_st_00023723_uv_index',
-  WIND_BEARING_AVG: 'sensor.tempest_st_00023723_wind_bearing_avg',
+  STATION_PRESSURE: 'sensor.gw2000a_relative_pressure',
+  UV_INDEX: 'sensor.gw2000a_uv_index',
+  WIND_BEARING_AVG: 'sensor.gw2000a_wind_direction_10m_avg',
   WIND_DIRECTION_AVG: 'sensor.tempest_st_00023723_wind_direction_avg',
-  WIND_GUST: 'sensor.tempest_st_00023723_wind_gust',
-  WIND_SPEED_AVG: 'sensor.tempest_st_00023723_wind_speed_avg',
+  WIND_GUST: 'sensor.gw2000a_wind_gust',
+  WIND_SPEED_AVG: 'sensor.gw2000a_wind_speed',
 } as const;
 
 export type SensorId = typeof SENSOR_IDS[keyof typeof SENSOR_IDS];
@@ -92,7 +90,7 @@ export async function fetchAtmosphericConditions(): Promise<AtmosphericCondition
   const sensors = indexSensors(payload.sensors);
 
   const bearing = parseNumberSensor(sensors[SENSOR_IDS.WIND_BEARING_AVG]);
-  const direction = sensors[SENSOR_IDS.WIND_DIRECTION_AVG]?.state;
+  const direction = bearingToCompass8(bearing);
   const speedKmh = parseNumberSensor(sensors[SENSOR_IDS.WIND_SPEED_AVG]);
   const gustKmh = parseNumberSensor(sensors[SENSOR_IDS.WIND_GUST]);
   const uvIndex = parseNumberSensor(sensors[SENSOR_IDS.UV_INDEX]);
@@ -144,4 +142,16 @@ function classifyUvIndex(index: number): UvLevel {
   if (index <= 2) return 'safe';
   if (index <= 7) return 'aware';
   return 'extreme';
+}
+
+function bearingToCompass8(bearing: number): "N" | "NE" | "E" | "SE" | "S" | "SW" | "W" | "NW" {
+  const directions = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"] as const;
+
+  // Normalize to [0, 360)
+  const b = ((bearing % 360) + 360) % 360;
+
+  // 8 sectors of 45°, centered on the cardinals/intercardinals
+  const index = Math.round(b / 45) % 8;
+
+  return directions[index];
 }
