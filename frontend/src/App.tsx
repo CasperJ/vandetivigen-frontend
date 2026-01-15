@@ -12,7 +12,7 @@ function App() {
   const [atmosphericError, setAtmosphericError] = useState<string | null>(null);
 
 
-  const enableAir = false;
+  const enableAir = true;
   const enableWaterQuality = false;
 
   useEffect(() => {
@@ -217,7 +217,7 @@ function App() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-200">
                   <div className="text-orange-700 text-sm font-medium mb-2">Temperature</div>
-                  <div className="text-4xl font-bold text-gray-800">{data.current.airTemp}°C</div>
+                  <div className="text-4xl font-bold text-gray-800">{data.current.airTemp}°C (feels like: {data.current.airTemp}°C)</div>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-6 border border-blue-200">

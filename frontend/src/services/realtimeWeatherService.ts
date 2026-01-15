@@ -8,6 +8,9 @@ export const SENSOR_IDS = {
   WIND_DIRECTION_AVG: 'sensor.tempest_st_00023723_wind_direction_avg',
   WIND_GUST: 'sensor.gw2000a_wind_gust',
   WIND_SPEED_AVG: 'sensor.gw2000a_wind_speed',
+  AIR_TEMP: 'sensor.gw2000a_outdoor_temperature',
+  AIR_HUMIDITY: 'sensor.gw2000a_humidity',
+  AIR_TEMP_FEELS_LIKE: 'sensor.gw2000a_feels_like_temperature'
 } as const;
 
 export type SensorId = typeof SENSOR_IDS[keyof typeof SENSOR_IDS];
@@ -68,9 +71,16 @@ export interface UvConditions {
   refreshedAt: string;
 }
 
+export interface AirConditions {
+  temp: number;
+  temp_feels_like: number;
+  humidity: number;
+}
+
 export interface AtmosphericConditions {
   wind: WindConditions;
   uv: UvConditions;
+  air: AirConditions;
 }
 
 export async function fetchRealTimeData(): Promise<RealTimeResponse> {
@@ -90,12 +100,14 @@ export async function fetchAtmosphericConditions(): Promise<AtmosphericCondition
   const sensors = indexSensors(payload.sensors);
 
   const bearing = parseNumberSensor(sensors[SENSOR_IDS.WIND_BEARING_AVG]);
-  const direction = bearingToCompass8(bearing);
   const speedKmh = parseNumberSensor(sensors[SENSOR_IDS.WIND_SPEED_AVG]);
   const gustKmh = parseNumberSensor(sensors[SENSOR_IDS.WIND_GUST]);
   const uvIndex = parseNumberSensor(sensors[SENSOR_IDS.UV_INDEX]);
+  const airTemp = parseNumberSensor(sensors[SENSOR_IDS.AIR_TEMP]);
+  const airTempFeelsLike = parseNumberSensor(sensors[SENSOR_IDS.AIR_TEMP_FEELS_LIKE]);
+  const airHumidity = parseNumberSensor(sensors[SENSOR_IDS.AIR_HUMIDITY]);
 
-  if (bearing === null || !direction || speedKmh === null) {
+  if (bearing === null || speedKmh === null) {
     throw new Error('Wind data missing required sensors');
   }
 
@@ -103,9 +115,13 @@ export async function fetchAtmosphericConditions(): Promise<AtmosphericCondition
     throw new Error('UV index sensor missing');
   }
 
+  if (airTemp === null || airTempFeelsLike === null || airHumidity === null) {
+    throw new Error('Air sensor missing');
+  }
+
   return {
     wind: {
-      direction,
+      direction: bearingToCompass8(bearing),
       bearingDegrees: bearing,
       speedMs: Number((speedKmh * KMH_TO_MS).toFixed(2)),
       gustMs: gustKmh === null ? null : Number((gustKmh * KMH_TO_MS).toFixed(2)),
@@ -116,6 +132,11 @@ export async function fetchAtmosphericConditions(): Promise<AtmosphericCondition
       level: classifyUvIndex(uvIndex),
       refreshedAt: payload.refreshedAt,
     },
+    air:{
+      temp: airTemp,
+      temp_feels_like: airTempFeelsLike,
+      humidity: airHumidity
+    }
   };
 }
 
